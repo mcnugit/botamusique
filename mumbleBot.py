@@ -14,6 +14,7 @@ import os
 import os.path
 import pymumble_py3 as pymumble
 import pymumble_py3.constants
+import inspect
 import variables as var
 import logging
 import logging.handlers
@@ -115,14 +116,22 @@ class MumbleBot:
             self.bandwidth = var.config.getint("bot", "bandwidth")
 
         # client_type=1 marks this connection as a bot for servers supporting it
-        self.mumble = pymumble.Mumble(host, user=self.username, port=port, password=password, tokens=tokens,
-                                      stereo=self.stereo,
-                                      debug=var.config.getboolean('debug', 'mumble_connection'),
-                                      certfile=certificate,
-                                      client_type=1)
+        _kwargs = {
+            "user": self.username,
+            "port": port,
+            "password": password,
+            "tokens": tokens,
+            "stereo": self.stereo,
+            "debug": var.config.getboolean('debug', 'mumble_connection'),
+            "certfile": certificate,
+        }
+        if 'client_type' in inspect.signature(pymumble.Mumble.__init__).parameters:
+            _kwargs["client_type"] = 1
+        self.mumble = pymumble.Mumble(host, **_kwargs)
         self.mumble.callbacks.set_callback(pymumble.constants.PYMUMBLE_CLBK_TEXTMESSAGERECEIVED, self.message_received)
 
-        self.mumble.set_codec_profile("audio")
+        if hasattr(self.mumble, "set_codec_profile"):
+            self.mumble.set_codec_profile("audio")
         self.mumble.start()  # start the mumble thread
         self.mumble.is_ready()  # wait for the connection
 
