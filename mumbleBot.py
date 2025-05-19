@@ -399,9 +399,26 @@ class MumbleBot:
         own_channel = self.mumble.channels[self.mumble.users.myself['channel_id']]
         own_channel.send_text_message(msg)
         for name in self.listen_subscribers:
-            user = self.mumble.users.find_by_name(name)
+            user = self.find_user_by_name(name)
             if user:
                 user.send_text_message(msg)
+
+    def find_user_by_name(self, name):
+        """Return the user object matching *name* or ``None`` if not found."""
+        for user in self.mumble.users.values():
+            try:
+                if user['name'] == name:
+                    return user
+            except Exception:
+                pass
+            try:
+                if user.get_property('name') == name:
+                    return user
+            except Exception:
+                pass
+            if getattr(user, 'name', None) == name:
+                return user
+        return None
 
     def update_whisper_sessions(self):
         """Configure whisper targets based on subscribed listeners."""
@@ -416,7 +433,7 @@ class MumbleBot:
 
         sessions = []
         for name in self.listen_subscribers:
-            user = self.mumble.users.find_by_name(name)
+            user = self.find_user_by_name(name)
             if user:
                 sessions.append(user.session)
 
@@ -466,7 +483,7 @@ class MumbleBot:
         self.update_whisper_sessions()
 
         user_count = self.get_user_count_in_channel()
-        has_listener_online = any(self.mumble.users.find_by_name(n) for n in self.listen_subscribers)
+        has_listener_online = any(self.find_user_by_name(n) for n in self.listen_subscribers)
 
         if has_listener_online and self.is_pause and var.config.get("bot", "when_nobody_in_channel") in ["pause", "pause_resume"]:
             self.resume()
