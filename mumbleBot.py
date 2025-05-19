@@ -399,6 +399,7 @@ class MumbleBot:
 
                 if not self.cmd_handle[command_exc]['access_outside_channel'] \
                         and not self.is_admin(user) \
+                        and user not in self.listen_subscribers \
                         and not var.config.getboolean('bot', 'allow_other_channel_message') \
                         and self.mumble.users[text.actor]['channel_id'] != self.mumble.users.myself['channel_id']:
                     self.mumble.users[text.actor].send_text_message(
