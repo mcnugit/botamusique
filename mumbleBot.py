@@ -420,6 +420,19 @@ class MumbleBot:
                 return user
         return None
 
+    @staticmethod
+    def get_user_session(user):
+        """Return the session id of *user* if possible."""
+        try:
+            return user['session']
+        except Exception:
+            pass
+        try:
+            return user.get_property('session')
+        except Exception:
+            pass
+        return getattr(user, 'session', None)
+
     def update_whisper_sessions(self):
         """Configure whisper targets based on subscribed listeners."""
         whisper_obj = None
@@ -435,7 +448,9 @@ class MumbleBot:
         for name in self.listen_subscribers:
             user = self.find_user_by_name(name)
             if user:
-                sessions.append(user.session)
+                session = self.get_user_session(user)
+                if session is not None:
+                    sessions.append(session)
 
         if not sessions:
             if hasattr(whisper_obj, 'remove_whisper'):
