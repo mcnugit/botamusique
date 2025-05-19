@@ -52,6 +52,29 @@ try:
 except Exception:
     pass
 
+# Provide a consistent whisper API across pymumble versions. Some releases only
+# expose ``set_whisper`` and ``remove_whisper`` on ``SoundOutput``. If those
+# methods are missing on :class:`pymumble.Mumble`, create delegates so existing
+# code can rely on them regardless of the library version.
+try:
+    if not hasattr(pymumble.Mumble, 'set_whisper') and \
+            hasattr(pymumble.Mumble, 'sound_output') and \
+            hasattr(pymumble.SoundOutput, 'set_whisper'):
+        def _mumble_set_whisper(self, *args, **kwargs):
+            return self.sound_output.set_whisper(*args, **kwargs)
+
+        pymumble.Mumble.set_whisper = _mumble_set_whisper
+
+    if not hasattr(pymumble.Mumble, 'remove_whisper') and \
+            hasattr(pymumble.Mumble, 'sound_output') and \
+            hasattr(pymumble.SoundOutput, 'remove_whisper'):
+        def _mumble_remove_whisper(self, *args, **kwargs):
+            return self.sound_output.remove_whisper(*args, **kwargs)
+
+        pymumble.Mumble.remove_whisper = _mumble_remove_whisper
+except Exception:
+    pass
+
 class MumbleBot:
     version = 'git'
 
