@@ -32,6 +32,26 @@ from media.item import ValidationFailedError, PreparationFailedError
 from media.cache import MusicCache
 
 
+# Monkey patch pymumble to support the client_type argument when running
+# with older versions that do not yet implement it.
+try:
+    if 'client_type' not in inspect.signature(pymumble.Mumble.__init__).parameters:
+        _orig_init = pymumble.Mumble.__init__
+
+        def _patched_init(self, *args, client_type=0, **kwargs):
+            _orig_init(self, *args, **kwargs)
+            # best effort: store the client_type attribute and try to apply it
+            self.client_type = client_type
+            if client_type and hasattr(self, 'set_client_type'):
+                try:
+                    self.set_client_type(client_type)
+                except Exception:
+                    pass
+
+        pymumble.Mumble.__init__ = _patched_init
+except Exception:
+    pass
+
 class MumbleBot:
     version = 'git'
 
@@ -116,18 +136,17 @@ class MumbleBot:
             self.bandwidth = var.config.getint("bot", "bandwidth")
 
         # client_type=1 marks this connection as a bot for servers supporting it
-        _kwargs = {
-            "user": self.username,
-            "port": port,
-            "password": password,
-            "tokens": tokens,
-            "stereo": self.stereo,
-            "debug": var.config.getboolean('debug', 'mumble_connection'),
-            "certfile": certificate,
-        }
-        if 'client_type' in inspect.signature(pymumble.Mumble.__init__).parameters:
-            _kwargs["client_type"] = 1
-        self.mumble = pymumble.Mumble(host, **_kwargs)
+        self.mumble = pymumble.Mumble(
+            host,
+            user=self.username,
+            port=port,
+            password=password,
+            tokens=tokens,
+            stereo=self.stereo,
+            debug=var.config.getboolean('debug', 'mumble_connection'),
+            certfile=certificate,
+            client_type=1,
+        )
         self.mumble.callbacks.set_callback(pymumble.constants.PYMUMBLE_CLBK_TEXTMESSAGERECEIVED, self.message_received)
 
         if hasattr(self.mumble, "set_codec_profile"):
