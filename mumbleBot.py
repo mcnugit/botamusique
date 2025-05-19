@@ -977,6 +977,7 @@ if __name__ == '__main__':
 
     util.set_logging_formatter(handler, bot_logger.level)
     bot_logger.addHandler(handler)
+    bot_logger.propagate = False
     logging.getLogger("root").addHandler(handler)
     var.bot_logger = bot_logger
 
