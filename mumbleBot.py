@@ -114,10 +114,12 @@ class MumbleBot:
         else:
             self.bandwidth = var.config.getint("bot", "bandwidth")
 
+        # client_type=1 marks this connection as a bot for servers supporting it
         self.mumble = pymumble.Mumble(host, user=self.username, port=port, password=password, tokens=tokens,
                                       stereo=self.stereo,
                                       debug=var.config.getboolean('debug', 'mumble_connection'),
-                                      certfile=certificate)
+                                      certfile=certificate,
+                                      client_type=1)
         self.mumble.callbacks.set_callback(pymumble.constants.PYMUMBLE_CLBK_TEXTMESSAGERECEIVED, self.message_received)
 
         self.mumble.set_codec_profile("audio")

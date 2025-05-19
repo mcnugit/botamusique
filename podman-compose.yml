@@ -1,0 +1,38 @@
+version: "3.9"
+
+services:
+  botamusique:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: botamusique:latest
+    container_name: botamusique
+    restart: unless-stopped
+    security_opt:
+      - label=disable
+    expose:
+      - "8181"
+    environment:
+      # Connect to the host's Murmur server via Podman host gateway
+      - BAM_MUMBLE_SERVER=host.containers.internal
+      # Store the SQLite databases on a writable host mount
+      - BAM_DB=/data/settings.db
+      - BAM_MUSIC_DB=/data/music.db
+    volumes:
+      # Custom configuration to enable web interface
+      - ./configuration.ini:/botamusique/configuration.ini:Z
+      # Persist databases
+      - ./data:/data:Z
+    networks:
+      - proxy
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.botamusique.rule: "Host(`mumblemusic.skyn3t.lol`)"
+      traefik.http.routers.botamusique.entrypoints: "websecure"
+      traefik.http.routers.botamusique.tls: "true"
+      traefik.http.services.botamusique.loadbalancer.server.port: "8181"
+
+networks:
+  proxy:
+    external:
+      name: proxy

@@ -5,5 +5,5 @@ Pillow
 mutagen
 requests
 packaging
-pymumble>=1.2
+pymumble>=1.7
 pyradios
