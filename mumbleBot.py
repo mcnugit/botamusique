@@ -527,12 +527,12 @@ class MumbleBot:
         if has_listener_online and self.is_pause and var.config.get("bot", "when_nobody_in_channel") in ["pause", "pause_resume"]:
             self.resume()
 
-        if user_count > self._user_in_channel and user_count == 2:
+        if self._user_in_channel == 0 and user_count > 0:
             if var.config.get("bot", "when_nobody_in_channel") == "pause_resume":
                 self.resume()
             elif var.config.get("bot", "when_nobody_in_channel") == "pause" and self.is_pause:
                 self.send_channel_msg(tr("auto_paused"))
-        elif user_count == 1 and len(var.playlist) != 0 and not has_listener_online:
+        elif user_count == 0 and len(var.playlist) != 0 and not has_listener_online:
             # if the bot is the only user left in the channel and the playlist isn't empty and no listener online
             if var.config.get("bot", "when_nobody_in_channel") == "stop":
                 self.log.info('bot: No user in my channel. Stop music now.')
