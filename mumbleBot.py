@@ -404,8 +404,14 @@ class MumbleBot:
                 user.send_text_message(msg)
 
     def update_whisper_sessions(self):
-        if not self.listen_subscribers:
-            self.mumble.set_whisper()
+        """Configure whisper targets based on subscribed listeners."""
+        whisper_obj = None
+        if hasattr(self.mumble, 'set_whisper'):
+            whisper_obj = self.mumble
+        elif hasattr(self.mumble, 'sound_output') and hasattr(self.mumble.sound_output, 'set_whisper'):
+            whisper_obj = self.mumble.sound_output
+        else:
+            self.log.warning('whisper not available in this pymumble version')
             return
 
         sessions = []
@@ -414,10 +420,20 @@ class MumbleBot:
             if user:
                 sessions.append(user.session)
 
-        if sessions:
-            self.mumble.set_whisper(sessions=sessions)
-        else:
-            self.mumble.set_whisper()
+        if not sessions:
+            if hasattr(whisper_obj, 'remove_whisper'):
+                whisper_obj.remove_whisper()
+            else:
+                try:
+                    whisper_obj.set_whisper()
+                except TypeError:
+                    whisper_obj.set_whisper([])
+            return
+
+        try:
+            whisper_obj.set_whisper(sessions)
+        except TypeError:
+            whisper_obj.set_whisper(sessions=sessions)
 
     @staticmethod
     def is_admin(user):
