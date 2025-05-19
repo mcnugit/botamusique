@@ -37,6 +37,8 @@ def register_all_commands(bot):
     bot.register_command(commands('joinme'), cmd_joinme, access_outside_channel=True)
     bot.register_command(commands('last'), cmd_last)
     bot.register_command(commands('list_file'), cmd_list_file)
+    bot.register_command(commands('listen'), cmd_listen)
+    bot.register_command(commands('unlisten'), cmd_unlisten)
     bot.register_command(commands('mode'), cmd_mode)
     bot.register_command(commands('pause'), cmd_pause)
     bot.register_command(commands('play'), cmd_play)
@@ -147,6 +149,22 @@ def cmd_joinme(bot, user, text, command, parameter):
 
     bot.mumble.users.myself.move_in(
         bot.mumble.users[text.actor]['channel_id'], token=parameter)
+
+
+def cmd_listen(bot, user, text, command, parameter):
+    if user not in bot.listen_subscribers:
+        bot.listen_subscribers.add(user)
+        var.db.set("whisper_subscribe", user, "1")
+        bot.update_whisper_sessions()
+    bot.send_msg(tr('listen_on'), text)
+
+
+def cmd_unlisten(bot, user, text, command, parameter):
+    if user in bot.listen_subscribers:
+        bot.listen_subscribers.remove(user)
+        var.db.remove_option("whisper_subscribe", user)
+        bot.update_whisper_sessions()
+    bot.send_msg(tr('listen_off'), text)
 
 
 def cmd_user_ban(bot, user, text, command, parameter):

@@ -114,10 +114,12 @@ class MumbleBot:
         else:
             self.bandwidth = var.config.getint("bot", "bandwidth")
 
+        # client_type=1 marks this connection as a bot for servers supporting it
         self.mumble = pymumble.Mumble(host, user=self.username, port=port, password=password, tokens=tokens,
                                       stereo=self.stereo,
                                       debug=var.config.getboolean('debug', 'mumble_connection'),
-                                      certfile=certificate)
+                                      certfile=certificate,
+                                      client_type=1)
         self.mumble.callbacks.set_callback(pymumble.constants.PYMUMBLE_CLBK_TEXTMESSAGERECEIVED, self.message_received)
 
         self.mumble.set_codec_profile("audio")
@@ -136,6 +138,10 @@ class MumbleBot:
         bots = var.config.get("bot", "when_nobody_in_channel_ignore",fallback="")
         self.bots = set(bots.split(','))
         self._user_in_channel = self.get_user_count_in_channel()
+
+        # Load whisper subscribers from database
+        self.listen_subscribers = set(name for name, _ in var.db.items('whisper_subscribe'))
+        self.update_whisper_sessions()
 
 
         # ====== Volume ======
@@ -364,6 +370,26 @@ class MumbleBot:
         msg = msg.encode('utf-8', 'ignore').decode('utf-8')
         own_channel = self.mumble.channels[self.mumble.users.myself['channel_id']]
         own_channel.send_text_message(msg)
+        for name in self.listen_subscribers:
+            user = self.mumble.users.find_by_name(name)
+            if user:
+                user.send_text_message(msg)
+
+    def update_whisper_sessions(self):
+        if not self.listen_subscribers:
+            self.mumble.set_whisper()
+            return
+
+        sessions = []
+        for name in self.listen_subscribers:
+            user = self.mumble.users.find_by_name(name)
+            if user:
+                sessions.append(user.session)
+
+        if sessions:
+            self.mumble.set_whisper(sessions=sessions)
+        else:
+            self.mumble.set_whisper()
 
     @staticmethod
     def is_admin(user):
@@ -392,17 +418,22 @@ class MumbleBot:
 
 
     def users_changed(self, user, message):
-        # only check if there is one more user currently in the channel
-        # else when the music is paused and somebody joins, music would start playing again
+        # Update whisper sessions and handle pause/resume logic considering listeners
+        self.update_whisper_sessions()
+
         user_count = self.get_user_count_in_channel()
+        has_listener_online = any(self.mumble.users.find_by_name(n) for n in self.listen_subscribers)
+
+        if has_listener_online and self.is_pause and var.config.get("bot", "when_nobody_in_channel") in ["pause", "pause_resume"]:
+            self.resume()
 
         if user_count > self._user_in_channel and user_count == 2:
             if var.config.get("bot", "when_nobody_in_channel") == "pause_resume":
                 self.resume()
             elif var.config.get("bot", "when_nobody_in_channel") == "pause" and self.is_pause:
                 self.send_channel_msg(tr("auto_paused"))
-        elif user_count == 1 and len(var.playlist) != 0:
-            # if the bot is the only user left in the channel and the playlist isn't empty
+        elif user_count == 1 and len(var.playlist) != 0 and not has_listener_online:
+            # if the bot is the only user left in the channel and the playlist isn't empty and no listener online
             if var.config.get("bot", "when_nobody_in_channel") == "stop":
                 self.log.info('bot: No user in my channel. Stop music now.')
                 self.clear()
